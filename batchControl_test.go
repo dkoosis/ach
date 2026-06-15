@@ -306,6 +306,21 @@ func testBatchControlLength(t testing.TB) {
 }
 
 // TestBatchControlLength tests verifying batch control length
+// TestBatchControl__ValidateRejectsOverlength verifies that a multi-byte UTF-8
+// value, which fits the column by rune count but overflows the fixed NACHA byte
+// width, is rejected by Validate rather than silently emitting a >94-byte record.
+func TestBatchControl__ValidateRejectsOverlength(t *testing.T) {
+	bc := mockBatchControl()
+
+	bc.CompanyIdentification = "ASCII1234" // 9 runes, 9 bytes
+	require.NoError(t, bc.Validate())
+	require.Len(t, bc.String(), lineLength)
+
+	bc.CompanyIdentification = "Café1234" // 8 runes, 9 bytes (é is 2 bytes)
+	require.Greater(t, len(bc.String()), lineLength)
+	require.ErrorContains(t, bc.Validate(), "is not length 94")
+}
+
 func TestBatchControlLength(t *testing.T) {
 	testBatchControlLength(t)
 }
