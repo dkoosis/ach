@@ -182,6 +182,14 @@ func (bc *BatchControl) Validate() error {
 		return fieldError("TotalCreditEntryDollarAmount", err, bc.TotalCreditEntryDollarAmount)
 	}
 
+	// A multi-byte UTF-8 value in a variable field passes the character checks
+	// above (rune count fits the column) but makes the encoded record exceed its
+	// fixed NACHA byte width, so the file no longer round-trips to 94-byte lines.
+	// Guard the encoded byte length so such a record does not validate.
+	if n := len(bc.String()); n != lineLength {
+		return fieldError("BatchControl", NewErrValidFieldLength(lineLength), strconv.Itoa(n))
+	}
+
 	return nil
 }
 
